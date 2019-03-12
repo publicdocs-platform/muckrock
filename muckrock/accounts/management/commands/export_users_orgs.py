@@ -39,7 +39,6 @@ class Command(BaseCommand):
 
     def export_users(self):
         """Export users"""
-        # XXX this needs to be redone
         key = self.bucket.new_key('squarelet_export/users.csv')
         with smart_open(key, 'wb') as out_file:
             writer = csv.writer(out_file)
@@ -53,10 +52,13 @@ class Command(BaseCommand):
                 'is_active',
                 'is_superuser',
                 'email_confirmed',
+                'email_failed',
+                'is_agency',
+                'avatar_url',
+                'use_autologin',
+                'source',
             ])
-            for user in User.objects.select_related('profile').exclude(
-                profile__acct_type='agency'
-            ):
+            for user in User.objects.select_related('profile'):
                 writer.writerow([
                     user.profile.uuid,
                     user.username,
@@ -67,6 +69,11 @@ class Command(BaseCommand):
                     user.is_active,
                     user.is_superuser,
                     user.profile.email_confirmed,
+                    user.profile.email_failed,
+                    user.profile.agency is not None,
+                    user.profile.avatar.url,
+                    user.profile.use_autologin,
+                    'muckrock',
                 ])
 
     def export_orgs(self):
