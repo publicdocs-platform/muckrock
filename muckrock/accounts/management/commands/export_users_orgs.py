@@ -90,11 +90,12 @@ class Command(BaseCommand):
                 'private',
                 'customer_id',
                 'subscription_id',
+                'payment_failed',
                 'date_update',
-                'num_requests',
                 'max_users',
-                'monthly_cost',
+                'requests_per_month',
                 'monthly_requests',
+                'number_requests',
             ])
             for org in Organization.objects.select_related(
                 'owner__profile'
@@ -109,11 +110,12 @@ class Command(BaseCommand):
                     org.private,
                     org.owner.profile.customer_id,
                     org.stripe_id,
+                    org.owner.profile.payment_failed,
                     org.date_update,
-                    org.num_requests,
                     org.max_users,
-                    org.monthly_cost,
-                    org._monthly_requests,
+                    org.requests_per_month,
+                    org.monthly_requests,
+                    org.number_requests,
                 ])
 
     def export_members(self):
@@ -130,7 +132,7 @@ class Command(BaseCommand):
             ])
             for member in Membership.objects.select_related(
                 'user__profile', 'organization'
-            ).exclude(user__profile__acct_type='agency'):
+            ):
                 writer.writerow([
                     member.user.profile.uuid,
                     member.organization.uuid,
