@@ -17,7 +17,7 @@ from rest_framework.routers import DefaultRouter
 
 # MuckRock
 import muckrock.accounts.viewsets
-import muckrock.agency.views
+import muckrock.agency.viewsets
 import muckrock.core.views as views
 import muckrock.crowdsource.viewsets
 import muckrock.foia.viewsets
@@ -52,7 +52,7 @@ router.register(
     r'jurisdiction', muckrock.jurisdiction.viewsets.JurisdictionViewSet,
     'api-jurisdiction'
 )
-router.register(r'agency', muckrock.agency.views.AgencyViewSet, 'api-agency')
+router.register(r'agency', muckrock.agency.viewsets.AgencyViewSet, 'api-agency')
 router.register(r'foia', muckrock.foia.viewsets.FOIARequestViewSet, 'api-foia')
 router.register(
     r'exemption', muckrock.jurisdiction.viewsets.ExemptionViewSet,

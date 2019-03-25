@@ -4,22 +4,20 @@ Views for the Agency application
 
 # Django
 from django.contrib import messages
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.core.urlresolvers import reverse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import linebreaks
+from django.views.generic.edit import FormView
 
 # Standard Library
 import re
 
-# Third Party
-import django_filters
-from rest_framework import viewsets
-
 # MuckRock
 from muckrock.agency.filters import AgencyFilterSet
+from muckrock.agency.forms import AgencyMergeForm
 from muckrock.agency.models import Agency
-from muckrock.agency.serializers import AgencySerializer
 from muckrock.agency.utils import initial_communication_template
 from muckrock.core.views import MRSearchFilterListView
 from muckrock.jurisdiction.forms import FlagForm
@@ -147,42 +145,6 @@ def redirect_flag(request, jurisdiction, jidx, slug, idx):
     return redirect('agency-detail', jurisdiction, jidx, slug, idx)
 
 
-class AgencyViewSet(viewsets.ModelViewSet):
-    """API views for Agency"""
-    # pylint: disable=too-many-public-methods
-    queryset = (
-        Agency.objects.order_by('id').select_related(
-            'jurisdiction', 'parent', 'appeal_agency'
-        ).prefetch_related('types')
-    )
-    serializer_class = AgencySerializer
-    # don't allow ordering by computed fields
-    ordering_fields = [
-        f for f in AgencySerializer.Meta.fields if f not in (
-            'absolute_url',
-            'average_response_time',
-            'fee_rate',
-            'success_rate',
-        )
-    ]
-
-    class Filter(django_filters.FilterSet):
-        """API Filter for Agencies"""
-        jurisdiction = django_filters.NumberFilter(name='jurisdiction__id')
-        types = django_filters.CharFilter(
-            name='types__name',
-            lookup_expr='iexact',
-        )
-
-        class Meta:
-            model = Agency
-            fields = (
-                'name', 'status', 'jurisdiction', 'types', 'requires_proxy'
-            )
-
-    filter_class = Filter
-
-
 def boilerplate(request):
     """Return the boilerplate language for requests to the given agency"""
 
@@ -260,3 +222,41 @@ def contact_info(request, idx):
             'address':
                 unicode(agency.address) if agency.address else None,
         })
+
+
+class MergeAgency(PermissionRequiredMixin, FormView):
+    """View to merge agencies together"""
+
+    form_class = AgencyMergeForm
+    template_name = 'agency/merge.html'
+    permission_required = 'agency.merge_agency'
+
+    def get_initial(self):
+        """Set initial choice based on get parameter"""
+        initial = super(MergeAgency, self).get_initial()
+        if 'bad_agency' in self.request.GET:
+            initial['bad_agency'] = self.request.GET['bad_agency']
+        return initial
+
+    def form_valid(self, form):
+        """Confirm and merge"""
+        if form.cleaned_data['confirmed']:
+            good = form.cleaned_data['good_agency']
+            bad = form.cleaned_data['bad_agency']
+            good.merge(bad, self.request.user)
+            messages.success(
+                self.request, 'Merged {} into {}!'.format(good, bad)
+            )
+            return redirect('agency-merge')
+        else:
+            initial = {
+                'good_agency': form.cleaned_data['good_agency'],
+                'bad_agency': form.cleaned_data['bad_agency'],
+            }
+            form = self.form_class(confirmed=True, initial=initial)
+            return self.render_to_response(self.get_context_data(form=form))
+
+    def form_invalid(self, form):
+        """Something went wrong"""
+        messages.error(self.request, form.errors)
+        return redirect('agency-merge')
