@@ -23,7 +23,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from smart_open import smart_open
 
 # MuckRock
-from muckrock.accounts.models import Profile, Statistics
+from muckrock.accounts.models import Statistics
 from muckrock.accounts.utils import user_plan_count
 from muckrock.core.models import ExtractDay
 from muckrock.core.utils import cache_get_or_set
@@ -47,6 +47,8 @@ class CompareNumberWidget(NumberWidget):
         """Get data to pass to javascript"""
         value = self.get_value()
         previous = self.get_previous_value()
+        value = 0 if value is None else value
+        previous = 0 if previous is None else previous
         delta = value - previous
         if self.percent and previous != 0:
             delta = (100 * delta) / previous
@@ -244,7 +246,7 @@ class ProUserGraphWidget(StatGraphWidget):
 
     def get_value(self):
         """Get value"""
-        return user_plan_count('pro')
+        return user_plan_count('professional')
 
 
 class ReviewAgencyGraphWidget(StatGraphWidget):
@@ -353,7 +355,7 @@ class ProUserCountWidget(CompareNumberWidget):
 
     def get_value(self):
         """Get value"""
-        return user_plan_count('pro')
+        return user_plan_count('professional')
 
     def get_previous_value(self):
         """Get previous value"""
@@ -368,16 +370,9 @@ class OrgUserCountWidget(CompareNumberWidget):
     direction = 1
     more_info = 'vs one month ago'
 
-    # XXX
-
     def get_value(self):
         """Get value"""
-        return (
-            Profile.objects.filter(
-                organization__active=True,
-                organization__monthly_cost__gt=0,
-            ).count()
-        )
+        return user_plan_count('organization')
 
     def get_previous_value(self):
         """Get previous value"""

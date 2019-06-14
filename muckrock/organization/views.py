@@ -4,6 +4,7 @@ Views for the organization application
 # Django
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.urlresolvers import reverse
@@ -105,6 +106,7 @@ class OrganizationSquareletView(RedirectView):
             return '{}/organizations/{}/'.format(settings.SQUARELET_URL, slug)
 
 
+@login_required
 def activate(request):
     """Activate one of your organizations"""
     redirect_url = request.POST.get('next', '/')
@@ -117,7 +119,7 @@ def activate(request):
         request.user.profile.organization = organization
         # update the navbar header cache
         cache.set(
-            'sb:{}:user_org'.format(request.user.username),
+            u'sb:{}:user_org'.format(request.user.username),
             organization,
             settings.DEFAULT_CACHE_TIMEOUT,
         )

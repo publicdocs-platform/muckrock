@@ -22,7 +22,7 @@ class ProfileQuerySet(models.QuerySet):
     def squarelet_update_or_create(self, uuid, data):
         """Update or create records based on data from squarelet"""
 
-        required_fields = {'preferred_username', 'email', 'organizations'}
+        required_fields = {'preferred_username', 'organizations'}
         missing = required_fields - (required_fields & set(data.keys()))
         if missing:
             raise ValueError('Missing required fields: {}'.format(missing))
@@ -73,11 +73,13 @@ class ProfileQuerySet(models.QuerySet):
             'email_failed': False,
             'email_verified': False,
             'use_autologin': True,
-            'agency': None,
         }
+        # if key is not present in profile_defaults, the default is to
+        # leave it unchanged, do not include it in profile_data
         profile_data = {
-            profile_map[k]: data.get(k, profile_defaults[k])
+            profile_map[k]: data.get(k, profile_defaults.get(k))
             for k in profile_map.iterkeys()
+            if k in data or k in profile_defaults
         }
         profile_data['user'] = user
         profile, _ = self.update_or_create(uuid=uuid, defaults=profile_data)
@@ -134,12 +136,12 @@ class ProfileQuerySet(models.QuerySet):
 
         # update cache after updating orgs
         cache.set(
-            'sb:{}:user_org'.format(user.username),
+            u'sb:{}:user_org'.format(user.username),
             organization,
             settings.DEFAULT_CACHE_TIMEOUT,
         )
         cache.set(
-            'sb:{}:user_orgs'.format(user.username),
+            u'sb:{}:user_orgs'.format(user.username),
             user.organizations.order_by('-individual', 'name'),
             settings.DEFAULT_CACHE_TIMEOUT,
         )

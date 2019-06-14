@@ -12,7 +12,10 @@ from datetime import date
 from itertools import groupby
 
 # Third Party
+import emoji
 from fpdf import FPDF
+
+CERTIFIED_AMOUNT = os.environ.get('CERTIFIED_AMOUNT', 150)
 
 
 class PDF(FPDF):
@@ -78,6 +81,8 @@ class SnailMailPDF(PDF):
             self._extra_header(u'{} APPEAL'.format(law_name))
         self.set_font('DejaVu', '', 10)
         msg_body = self.comm.foia.render_msg_body(self.comm, appeal=self.appeal)
+        # remove emoji's, as they break pdf rendering
+        msg_body = emoji.get_emoji_regexp().sub(u'', msg_body)
         self.multi_cell(0, 13, msg_body.rstrip(), 0, 'L')
 
     def _extra_header(self, text):
@@ -156,8 +161,11 @@ class CoverPDF(PDF):
                     )
                 if snail.category == 'p':
                     lines.append(
-                        u'{}□ Write a check for ${:.2f}'.format(
-                            2 * tab, snail.amount
+                        u'{}□ Write a {}check for ${:.2f}'.format(
+                            2 * tab,
+                            'CERTIFIED '
+                            if snail.amount >= CERTIFIED_AMOUNT else '',
+                            snail.amount,
                         )
                     )
                 for file_, status, pages in files:

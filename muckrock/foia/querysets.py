@@ -86,8 +86,8 @@ class FOIARequestQuerySet(models.QuerySet):
             # Requests are visible if you own them, have view or edit permissions,
             # or if they are not embargoed
             query = (
-                Q(composer__user=user) | Q(edit_collaborators=user)
-                | Q(read_collaborators=user) | ~Q(embargo=True)
+                Q(composer__user=user) | Q(pk__in=user.edit_access.all())
+                | Q(pk__in=user.read_access.all()) | ~Q(embargo=True)
             )
             # agency users may also view requests for their agency
             if user.profile.is_agency_user:
@@ -95,7 +95,7 @@ class FOIARequestQuerySet(models.QuerySet):
             # organizational users may also view requests from their org that are shared
             query = query | Q(
                 composer__user__profile__org_share=True,
-                composer__organization__users=user,
+                composer__organization__in=user.organizations.all(),
             )
             return self.filter(query)
         else:
@@ -140,7 +140,7 @@ class FOIARequestQuerySet(models.QuerySet):
         return (
             self.select_related(
                 'agency__jurisdiction__parent__parent',
-            ).filter(composer__user__organization=organization)
+            ).filter(composer__organization=organization)
             .order_by('-composer__datetime_submitted')
         )
 
@@ -326,6 +326,31 @@ class FOIACommunicationQuerySet(PreloadFileQuerysetMixin, models.QuerySet):
     def preload_list(self):
         """Preload the relations required for displaying a list of communications"""
         return self.prefetch_related(*self.prefetch_fields).preload_files()
+
+    def get_viewable(self, user):
+        """Get all viewable FOIA communications for given user"""
+        # This is only used for filtering API view
+
+        if user.is_staff:
+            return self.all()
+
+        if user.is_authenticated():
+            # Requests are visible if you own them, have view or edit permissions,
+            # or if they are not embargoed
+            query = (
+                Q(foia__composer__user=user)
+                | Q(foia__in=user.edit_access.all())
+                | Q(foia__in=user.read_access.all()) | ~Q(foia__embargo=True)
+            )
+            # organizational users may also view requests from their org that are shared
+            query = query | Q(
+                foia__composer__user__profile__org_share=True,
+                foia__composer__organization__in=user.organizations.all(),
+            )
+            return self.filter(query)
+        else:
+            # anonymous user, filter out embargoes
+            return self.exclude(foia__embargo=True)
 
 
 class FOIAFileQuerySet(models.QuerySet):

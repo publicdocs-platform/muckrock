@@ -246,7 +246,6 @@ class Agency(models.Model, RequestHelper):
             data = {
                 'name': self.name,
                 'preferred_username': self.name,
-                'email': self.get_emails().first(),
                 'is_agency': True,
             }
             # error handling?
@@ -411,6 +410,22 @@ class Agency(models.Model, RequestHelper):
             )
         )
         agency.save()
+
+        self.notes = (
+            Concat(
+                F('notes'),
+                Value(
+                    u'\n\nAgency "{}" (#{}) was merged into this agency '
+                    u'by {} on {}'.format(
+                        agency.name,
+                        agency.pk,
+                        user.username,
+                        timezone.now(),
+                    )
+                )
+            )
+        )
+        self.save()
 
     class Meta:
         verbose_name_plural = 'agencies'

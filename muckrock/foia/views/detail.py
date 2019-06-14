@@ -19,6 +19,7 @@ from django.utils import timezone
 from django.views.generic import DetailView
 
 # Standard Library
+import itertools
 import json
 import logging
 import sys
@@ -361,6 +362,9 @@ class Detail(DetailView):
         has_perm = foia.has_perm(request.user, 'change')
         if has_perm and form.is_valid():
             projects = form.cleaned_data['projects']
+            for proj in itertools.chain(foia.projects.all(), projects):
+                # clear cache for old and new projects
+                proj.clear_cache()
             foia.projects = projects
         return redirect(foia.get_absolute_url() + '#')
 
@@ -479,6 +483,9 @@ class Detail(DetailView):
 
     def _follow_up(self, request, foia):
         """Handle submitting follow ups"""
+        if request.user.is_anonymous:
+            messages.error(request, 'You must be logged in to follow up')
+            return redirect(foia.get_absolute_url() + '#')
         if foia.attachments_over_size_limit(request.user):
             messages.error(
                 request, 'Total attachment size must be less than 20MB'
@@ -847,15 +854,18 @@ class Detail(DetailView):
                     save_card=form.cleaned_data['save_card'],
                 )
             except requests.exceptions.RequestException as exc:
-                messages.error(
-                    self.request, 'Payment Error: {}'.format(
-                        '\n'.join(
-                            '{}: {}'.format(k, v)
-                            for k, v in exc.response.json().iteritems()
+                logger.warn('Payment error: %s', exc, exc_info=sys.exc_info())
+                if exc.response.status_code / 100 == 4:
+                    messages.error(
+                        self.request, 'Payment Error: {}'.format(
+                            '\n'.join(
+                                '{}: {}'.format(k, v)
+                                for k, v in exc.response.json().iteritems()
+                            )
                         )
                     )
-                )
-                logger.warn('Payment error: %s', exc, exc_info=sys.exc_info())
+                else:
+                    messages.error(self.request, 'Payment Error')
                 return redirect(foia.get_absolute_url() + '#')
             else:
                 messages.success(

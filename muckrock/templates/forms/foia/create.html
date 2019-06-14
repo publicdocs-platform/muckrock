@@ -70,7 +70,13 @@
         >
         {% csrf_token %}
         {% for field in form.hidden_fields %}
-          {{ field }}
+          {% if field.name != "use_contact_information" %}
+            {% comment %}
+              Use contact information needs to be rendered below within the
+              .contact-info div so the javascript can find it
+            {% endcomment %}
+            {{ field }}
+          {% endif %}
         {% endfor %}
 
         {% include "lib/pattern/new_request_field.html" with field=form.title only %}
@@ -204,6 +210,7 @@
               </div>
               {% if perms.foia.set_info_foiarequest %}
                 <div class="form">
+                  {{ form.use_contact_information }} {# this is a hidden field #}
                   {% include "lib/pattern/field.html" with field=form.via only %}
                   {% include "lib/pattern/field.html" with field=form.email only %}
                   {% include "lib/pattern/field.html" with field=form.other_email only %}
@@ -257,9 +264,9 @@
         {% endif %}
 
         <div class="modal" id="email-warning-modal" data-foias-filed="{{foias_filed}}">
-          <p>Hi! It looks like you included your email address this in your request. When you file with MuckRock, we generate a unique email and physical address for every request to keep things organized. We include that information in what we send to the agency, so no need to add your contact information on this form. If you're including an email address to help the agency search for responsive documents, simple hit "Submit." If you'd like to edit the body of your request, click "Revise Request." You'll only see this message until you've submitted your first request.<p>
+          <p>Hi! It looks like you included your email address this in your request. When you file with MuckRock, we generate a unique email and physical address for every request to keep things organized. We include that information in what we send to the agency, so no need to add your contact information on this form. If you're including an email address to help the agency search for responsive documents, simply hit "Submit." If you'd like to edit the body of your request, click "Revise Request." You'll only see this message until you've submitted your first request.<p>
           <footer>
-            <button type="submit" name="action" value="save" class="primary button">Submit</button>
+            <button type="submit" class="primary button">Submit</button>
             <span class="close-modal button">Revise Request</span>
           </footer>
         </div>

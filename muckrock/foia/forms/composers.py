@@ -147,6 +147,14 @@ class BaseComposerForm(forms.ModelForm):
             Agency.objects.get_approved_and_pending(self._user)
         )
 
+    def save(self, commit=True, update_owners=True):
+        """Update the composer's user and organization"""
+        # pylint: disable=arguments-differ
+        if update_owners:
+            self.instance.user = self.request.user
+            self.instance.organization = self.request.user.profile.organization
+        return super(BaseComposerForm, self).save(commit)
+
     def clean_register_email(self):
         """Do a case insensitive uniqueness check"""
         email = self.cleaned_data['register_email']

@@ -256,6 +256,7 @@ class CreateComposer(MiniregMixin, GenericComposer, CreateView):
     def _handle_anonymous_submitter(self, form):
         """Handle a submission from an anonymous user"""
         # form validation guarentees we have either registration or login info
+        # pylint: disable=protected-access
         if form.cleaned_data.get('register_full_name'):
             user = self.miniregister(
                 form,
@@ -265,8 +266,8 @@ class CreateComposer(MiniregMixin, GenericComposer, CreateView):
             )
             return user
         else:
-            login(self.request, form.user)
-            return form.user
+            login(self.request, form._user)
+            return form._user
 
     def form_valid(self, form):
         """Create the request"""
@@ -278,11 +279,7 @@ class CreateComposer(MiniregMixin, GenericComposer, CreateView):
             except requests.exceptions.RequestException:
                 return self.form_invalid(form)
         if form.cleaned_data['action'] in ('save', 'submit'):
-            composer = form.save(commit=False)
-            composer.user = user
-            composer.organization = user.profile.organization
-            composer.save()
-            form.save_m2m()
+            composer = form.save()
             # if a new agency is added while the user is anonymous,
             # we want to associate that agency to the user once they
             # login or register
@@ -395,7 +392,7 @@ def autosave(request, idx):
         request=request,
     )
     if form.is_valid():
-        composer = form.save()
+        composer = form.save(update_owners=False)
         new_agencies = set(composer.agencies.all())
         removed_agencies = old_agencies - new_agencies
         # delete pending agencies which have been removed from composers and requests
