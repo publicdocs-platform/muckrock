@@ -211,7 +211,11 @@ def _parse_email_headers(post):
     from_email = EmailAddress.objects.fetch(from_)
     to_emails = EmailAddress.objects.fetch_many(to_)
     cc_emails = EmailAddress.objects.fetch_many(cc_)
-    return from_email, to_emails, cc_emails
+    message_id = (
+        post.get('Message-ID') or post.get('Message-Id')
+        or post.get('message-id')
+    )
+    return from_email, to_emails, cc_emails, message_id
 
 
 def _handle_request(request, mail_id):
@@ -222,7 +226,7 @@ def _handle_request(request, mail_id):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     post = request.POST
-    from_email, to_emails, cc_emails = _parse_email_headers(post)
+    from_email, to_emails, cc_emails, message_id = _parse_email_headers(post)
     subject = post.get('Subject') or post.get('subject', '')
 
     try:
@@ -384,7 +388,7 @@ def _catch_all(request, address):
     """Handle emails sent to other addresses"""
 
     post = request.POST
-    from_email, to_emails, cc_emails = _parse_email_headers(post)
+    from_email, to_emails, cc_emails, message_id = _parse_email_headers(post)
     subject = post.get('Subject') or post.get('subject', '')
 
     if any(to_email.email.startswith('bounce+') for to_email in to_emails):
