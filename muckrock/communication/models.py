@@ -302,6 +302,10 @@ class EmailCommunication(models.Model):
     to_emails = models.ManyToManyField(EmailAddress, related_name='to_emails')
     cc_emails = models.ManyToManyField(EmailAddress, related_name='cc_emails')
 
+    message_id = models.TextField(blank=True)
+    in_reply_to = models.TextField(blank=True)
+    references = models.TextField(blank=True)
+
     delivered = 'email'
 
     def __unicode__(self):
